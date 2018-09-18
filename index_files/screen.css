@@ -1,5 +1,5 @@
 @charset "UTF-8";
-/* http://meyerweb.com/eric/tools/css/reset/ 
+/* http://meyerweb.com/eric/tools/css/reset/
    v2.0 | 20110126
    License: none (public domain)
 */
@@ -94,8 +94,11 @@ table {
 
 @font-face {
   font-family: 'honda-icons';
-  src: url("/_Global/fonts/honda-icons.eot?-mn9i99");
-  src: url("/_Global/fonts/honda-icons.eot?#iefix-mn9i99") format("embedded-opentype"), url("/_Global/fonts/honda-icons.woff?-mn9i99") format("woff"), url("/_Global/fonts/honda-icons.ttf?-mn9i99") format("truetype"), url("/_Global/fonts/honda-icons.svg?-mn9i99#honda-icons") format("svg");
+  src: url("./honda-icons.eot?-mn9i99");
+  src: url("./honda-icons.eot?#iefix-mn9i99") format("embedded-opentype"),
+    url("./honda-icons.woff?-mn9i99") format("woff"),
+    url("./honda-icons.ttf?-mn9i99") format("truetype"),
+    url("./honda-icons.svg?-mn9i99#honda-icons") format("svg");
   font-weight: normal;
   font-style: normal; }
 
@@ -151,7 +154,7 @@ html {
   box-sizing: inherit; }
 
 body {
-  background: #333 url("/_Global/img/global/bg_gradient.jpg") 0 0 repeat-x;
+  background: #333 url("./bg_gradient.jpg") 0 0 repeat-x;
   min-width: 1000px;
   -webkit-font-smoothing: antialiased;
   position: relative; }
@@ -250,7 +253,7 @@ strong {
   top: 0;
   left: 0;
   z-index: 200;
-  background: rgba(0, 0, 0, 0.5) url("/_Global/img/global/Preloader.GIF") no-repeat center 35%; }
+  background: rgba(0, 0, 0, 0.5) url("./Preloader.GIF") no-repeat center 35%; }
   .popup-overlay.done-loading {
     background: rgba(0, 0, 0, 0.5); }
   .lt-ie9 .popup-overlay {
@@ -879,7 +882,7 @@ strong {
   .user-category .user-dealer-dropdown-title {
     color: white;
     font-weight: 700;
-    background: url("/_Global/img/global/arrow_down.png") center right no-repeat;
+    background: url("./arrow_down.png") center right no-repeat;
     padding-right: 15px;
     margin-right: 5px;
     cursor: default; }
@@ -8500,7 +8503,7 @@ html .slick-slide img {
     top: 50%;
     -webkit-transform: translateY(-50%);
             transform: translateY(-50%);
-    background: url("../img/global/chev-icon.svg") no-repeat center;
+    background: url("./chev-icon.svg") no-repeat center;
     background-size: 8px;
     pointer-events: none; }
   .province-selector-dropdown-container select {
@@ -9659,7 +9662,7 @@ body.dragging * {
   margin-left: 1px; }
 
 /*#tab-1 {
- display: block;   
+ display: block;
 }*/
 .tab-visible {
   display: block; }

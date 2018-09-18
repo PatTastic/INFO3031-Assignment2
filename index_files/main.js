@@ -208,14 +208,14 @@ window.NREUM || (NREUM = {}), __nr_require = function(e, t, n) {
     loader: [function(e, t, n) {
         function r() {
             if (!x++) {
-                var e = h.info = NREUM.info,
-                    t = d.getElementsByTagName("script")[0];
-                if (setTimeout(s.abort, 3e4), !(e && e.licenseKey && e.applicationID && t)) return s.abort();
-                f(y, function(t, n) {
-                    e[t] || (e[t] = n)
-                }), c("mark", ["onload", a() + h.offset], null, "api");
-                var n = d.createElement("script");
-                n.src = "https://" + e.agent, t.parentNode.insertBefore(n, t)
+                // var e = h.info = NREUM.info,
+                //     t = d.getElementsByTagName("script")[0];
+                // if (setTimeout(s.abort, 3e4), !(e && e.licenseKey && e.applicationID && t)) return s.abort();
+                // f(y, function(t, n) {
+                //     e[t] || (e[t] = n)
+                // }), c("mark", ["onload", a() + h.offset], null, "api");
+                // var n = d.createElement("script");
+                // n.src = "https://" + e.agent, t.parentNode.insertBefore(n, t)
             }
         }
 
