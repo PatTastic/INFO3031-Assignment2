@@ -1,0 +1,12 @@
+/* These styles are for accessibility & responsive fixes */
+
+/* Accessibility */
+*{
+    color: #aaaaaa;
+}
+
+.a-hide-content{
+    width: 0;
+    overflow: hidden;
+    padding: 0;
+}
