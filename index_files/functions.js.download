@@ -1,0 +1,231 @@
+$(document).ready(function () {
+    var $stickyDiv = $(".sticky"),
+        stickyTop = (typeof($stickyDiv.offset()) != "undefined") ? $stickyDiv.offset().top : 0,
+        rendered = false;
+
+    // smooth scrolling function
+    $.fn.scrollView = function () {
+      var offset = $(this).offset().top - $stickyDiv.outerHeight() * 2;
+      if ($('.sticky').css('position') === 'fixed') {
+        offset = $(this).offset().top - $stickyDiv.outerHeight();
+      }
+      return this.each(function() {
+          $('html, body').animate({
+              scrollTop: offset
+          }, 600);
+      });
+    };
+
+    // click anywhere on the site other than the user dealer dropdown then close it
+    $(".site-wrapper").on('click', function (evt) {
+        if (evt.target) {
+            if (evt.target.className) {
+                var $target = $(evt.target);
+                if (!$target.hasClass('user-dealer-dropdown-title') && !$target.hasClass('user-dealer-dropdown-input') &&
+                    !$target.hasClass('user-dealer-dropdown-btn') && !$target.hasClass('user-dealer-dropdown')) {
+                    $(".user-dealer-dropdown").removeClass("visible");
+                    rendered = false;
+                }
+            }
+        }
+    });
+
+    // deferred image loading function to make sure images load before being processed
+    $.loadImage = function(imgUrl) {
+        // Define a "worker" function that should eventually resolve or reject the deferred object.
+        var loadImage = function (deferred) {
+            var image = new Image();
+
+            // Ensures the event callbacks only get called once.
+            function cleanUp() {
+                image.onload = image.onerror = null;
+            }
+            // Calling resolve means the image loaded sucessfully
+            function loaded() {
+                cleanUp();
+                deferred.resolve(image);
+            }
+            // Calling reject means failed to load the image
+            function errored() {
+                cleanUp();
+                deferred.reject(image);
+            }
+
+            // Set up event handlers to know when the image has loaded or fails to load due to an error
+            image.onload = loaded;
+            image.onerror = errored;
+
+            // set the src property to begin loading image
+            image.src = imgUrl;
+        };
+
+        // deferred object that will contain the loaded image - convert to "read-only" by using a promise
+        return $.Deferred(loadImage).promise();
+    };
+
+    // Search dropdown
+    $('.btn-search').on('click', function() {
+        $(this).parent().toggleClass('is-active');
+    });
+
+    // Find my dealer in header display
+    $(".user-dealer-dropdown-container").hover(
+        function () {
+            $(".user-dealer-dropdown").addClass("visible");
+            rendered = !rendered;
+        },
+        function () { return true; }
+    );
+
+    //invoke search
+    $('.search-dropout-container a.button-search').on('click', function (event) {
+        event.preventDefault();
+        var $searchButton = $(this);
+        var $searchBox = $searchButton.siblings('input.search-dropout-input');
+        var $searchText = $searchBox.val();
+        var searchUrl = $searchButton.data('url');
+
+        if ($searchText != null && $searchText != '') {
+            window.location = searchUrl + "/" + encodeURIComponent($searchText);
+        }
+    });
+    $('input.search-dropout-input').on('keypress', function (e) {
+        e.stopPropagation();
+        if (e.keyCode == 13) {
+            $('.search-dropout-container a.button-search').trigger('click');
+        }
+    });
+
+    // Makes the model boxes all equal heights
+    $('.bike-listing').each(function(){
+      var heightArray = $(".bike-listing-item", this).map( function(){
+          return  $(this).height();
+      }).get();
+      var maxHeight = Math.max.apply( Math, heightArray);
+      $(".bike-listing-item", this).height(maxHeight);
+    });
+
+    // delayed resize event
+    var resizeId = 0;
+    $(window).resize(function () {
+        clearTimeout(resizeId);
+        resizeId = setTimeout(doneResizing, 20);
+    });
+
+    // make the dealer / finance bar sticky if at top of page
+    // the functionality is based on when the window is scrolled
+    $(window).scroll(function () {
+        // get the top of the browser window and width of site content
+        var windowTop = $(window).scrollTop();
+
+        // resize the bar in case not resizaed when browser is resized
+        var siteWidth = $(".site-wrapper").outerWidth();
+        $(".strip-wrapper").css("width", siteWidth);
+
+        // only make the bar sticky if the window is scrolled past it's position
+        if (windowTop > stickyTop) {
+            $stickyDiv.css({ "position": "fixed", "top": 0, "width": siteWidth, "z-index": 150 });
+            $(".content-below-bar").css({ "position": "relative", "top": 0 });
+        } else {
+            $stickyDiv.css({ "position": "relative" });
+            $(".content-below-bar").css({ "position": "relative", "top": 0 });
+        }
+    });
+
+    // resize event handler
+    function doneResizing() {
+        var siteWidth = $(".site-wrapper").outerWidth();
+        $(".strip-wrapper").css("width", siteWidth);
+    };
+
+    //Province Selector Close
+    $('.province-selector-close').click(function() {
+      $('.province-selector').addClass('hide-bar');
+      $('.province-selector').one('animationend webkitAnimationEnd oAnimationEnd MSAnimationEnd', function(event) {
+        $(this).css('display', 'none');
+      });
+    });
+
+    //FIXES ISSUE WHERE IPAD SCREEN POSITION WOULD JUMP ONCE THE "province-selector-dropdown" becomes in focus.
+    //Get the fixed element, and the input element it contains.
+    var fixed_el = document.getElementById('.province-selector');
+    var input_el = document.querySelector('.province-selector-dropdown');
+    //Listen for touchstart, focus will fire too late.
+    input_el.addEventListener('touchstart', function() {
+      //Switch to position absolute.
+      fixed_el.style.position = 'absolute';
+      fixed_el.style.bottom = (document.height - (window.scrollY + window.innerHeight) + bottom) + 'px';
+      //Switch back when focus is lost.
+      function blured() {
+        fixed_el.style.position = '';
+        fixed_el.style.bottom = '';
+        input_el.removeEventListener('blur', blured);
+      }
+      input_el.addEventListener('blur', blured);
+    });
+
+
+});
+
+/* COMMON FUNCTIONS */
+// Retrieves the value for a specified cookie or null if it doesn't exist
+var getCookie = function (name) {
+    var cookieName = name + "=";
+    var ca = document.cookie.split(';');
+
+    for (var i = 0; i < ca.length; i++) {
+
+        var c = ca[i];
+
+        while (c.charAt(0) == ' ') {
+            c = c.substring(1);
+        }
+
+        if (c.indexOf(name) == 0) {
+            return c.substring(cookieName.length, c.length);
+        }
+    }
+
+    return null;
+};
+
+// Sets the value for a cookie
+var setCookie = function (name, value, expDays) {
+    var d = new Date();
+    d.setTime(d.getTime() + (expDays * 24 * 60 * 60 * 1000));
+
+    var expires = "expires=" + d.toUTCString();
+    document.cookie = name + "=" + value + "; " + expires + ";path=/;";
+};
+
+var getCrossDomain = function (url, callback, errorCallback) {
+    if (window.XDomainRequest) {
+        // Use Microsoft XDR
+        var xdr = new XDomainRequest();
+        xdr.open("get", url);
+        xdr.onprogress = function () { };
+        xdr.onload = function () {
+            // XDomainRequest doesn't provide responseXml, so if you need it:
+            var dom = new ActiveXObject("Microsoft.XMLDOM");
+            dom.async = false;
+            var data = JSON.parse(xdr.responseText);
+            callback(data);
+        };
+        xdr.onerror = function (error) { errorCallback(error); };
+
+        xdr.send();
+    } else {
+        $.ajax({
+            type: 'GET',
+            url: url,
+            cache: false,
+            global: false,
+            success: function (data) {
+                callback(data);
+            },
+            error: function (error) {
+                errorCallback(error);
+            }
+        });
+    }
+}

@@ -1,0 +1,179 @@
+﻿
+// create the trim details add-to-compare singleton that is used for running the client side functions
+var addToCompare = new function () {
+    var self = this;
+
+    //Constant object properties
+    self.AddToCompareCookieName = $('.compare-models-cookie-name').val();
+    self.AddToCompareCookieExpires = 182; // 182 days or ~6 months
+    self.AddToCompareCookiePath = "/"; 
+    self.KeySeparator= '|';
+    self.ValueSeparator = ":";
+
+    // initialization function
+    self.init = function() {
+        var $valueArr = self.getCookieValueArray(),
+            cookieItemsTotal = $valueArr.length;
+
+        // set the modals error state to false
+        compareModels.hasError = false;
+
+        $('.add-to-compare-model').each(function() {
+            var $this = $(this),
+                $trimKey = $this.data('trim-key'),
+                $transmissionKey = $this.data('transmission-key'),
+                $txtRemoveFromComparison = $this.data('remove-from-comparison'),
+                $span = $('<span/>');
+
+            if ($.inArray(self.formCookieValue($trimKey, $transmissionKey), $valueArr) > -1) {
+                $this.addClass('added-to-compare-model');
+                $span.addClass('icon icon-minus');
+                $this.html('').append($span).append($txtRemoveFromComparison);
+            }
+        }).on('click', function(evt) {
+            var $this = $(this),
+                $txtAddToCompare = $this.data('add-to-compare'),
+                $txtRemoveFromComparison = $this.data('remove-from-comparison'),
+                $trimKey = $this.data('trim-key'),
+                $transmissionKey = $this.data('transmission-key'),
+                $span = $('<span/>');
+
+            evt.preventDefault();
+
+            // update the coolie info
+            $valueArr = self.getCookieValueArray();
+            cookieItemsTotal = $valueArr.length;
+
+            //Check if this is already added
+            if ($this.hasClass('added-to-compare-model')) {
+                $this.removeClass('added-to-compare-model');
+                $span.addClass('icon icon-plus');
+                $this.html('').append($span).append($txtAddToCompare);
+                self.removeFromCookie($trimKey, $transmissionKey);
+                self.updateCompareCart();
+            } else {
+                // only add new if less than 4 already in cookie
+                if (cookieItemsTotal < 4) {
+                    // update the link text
+                    $this.addClass('added-to-compare-model');
+                    $span.addClass('icon icon-minus');
+                    $this.html('').append($span).append($txtRemoveFromComparison);
+
+                    // add any new trim / transmission pair info to cookie and update the compare counter
+                    self.addToCookie($trimKey, $transmissionKey);
+                    self.updateCompareCart();
+                    // launch the compare models modal
+                    compareModels.launchModal(false);
+                } else {
+                    //If the current total is 4 log that there is an error and then open the modal
+                    compareModels.hasError = true;
+                    compareModels.launchModal(true);
+                }
+            }
+        });
+
+        //Update the cart
+        self.updateCompareCart();
+    };
+
+    //Function to Add to Cookie
+    self.addToCookie = function (trimKey, transmissionKey) {
+        var $currentCookieValue = self.getCookieValue();
+        var newCookieValue = self.formCookieValue(trimKey, transmissionKey);
+
+        if ($currentCookieValue !== '') {
+            if (!self.ifExists(trimKey, transmissionKey)) {
+                $.cookie(self.AddToCompareCookieName, $currentCookieValue + self.ValueSeparator + newCookieValue, { path: self.AddToCompareCookiePath, expires: self.AddToCompareCookieExpires });
+            }
+        } else {
+            $.cookie(self.AddToCompareCookieName, newCookieValue, { path: self.AddToCompareCookiePath, expires: self.AddToCompareCookieExpires });
+        }
+    };
+
+    //Function to remove from cookie
+    self.removeFromCookie = function (trimKey, transmissionKey) {
+        var $valueArr = self.getCookieValueArray();
+        if ($valueArr.length > 0) {
+            var $cookieValue = '';
+            var $newCookieValue = self.formCookieValue(trimKey, transmissionKey);
+
+            $.each($valueArr, function (index, value) {
+                if (value !== $newCookieValue) {
+                    $cookieValue += ($cookieValue === '' ? '' : self.ValueSeparator) + value;
+                }
+            });
+
+            // remove existing cookie and then re-create it
+            $.removeCookie(self.AddToCompareCookieName);
+            $.cookie(self.AddToCompareCookieName, $cookieValue, { path: self.AddToCompareCookiePath, expires: self.AddToCompareCookieExpires });
+        }
+    }
+
+    //Function to get the value of the cookie, if exists
+    self.getCookieValue = function () {
+        var cookieVal = $.cookie(self.AddToCompareCookieName);
+        return cookieVal != null ? cookieVal : '';
+    }
+
+    //Function to check if the value exists in the cookie
+    self.ifExists = function (trimKey, transmissionKey) {
+        var $valueArr = self.getCookieValueArray();
+        if ($valueArr.length > 0) {
+            return $.inArray(self.formCookieValue(trimKey, transmissionKey), $valueArr) > -1;
+        }
+        return false;
+    };
+
+    //Function to Cookie Array from cookie
+    self.getCookieValueArray = function () {
+        var $currentCookieValue = self.getCookieValue();
+        if ($currentCookieValue !== '') {
+            return $currentCookieValue.split(self.ValueSeparator);
+        }
+        return [];
+    }
+
+    //Function to format cookie value
+    self.formCookieValue = function (trimKey, transmissionKey) {
+        return trimKey + self.KeySeparator + transmissionKey;
+    }
+
+    //Function to update shopping cart
+    self.updateCompareCart = function () {
+        var $total = self.getCookieValueArray().length;
+        if ($total > 0) {
+            $('.compare-bikes .compare-models-compare-number').attr("data-compare-total", $total).html('(' + $total + ')');
+        } else {
+            $('.compare-bikes .compare-models-compare-number').attr("data-compare-total", 0).html('');
+        }
+    }
+
+    // refresh all of the removal / add buttons on the page
+    self.updateButtons = function () {
+        var $valueArr = self.getCookieValueArray();
+
+        $('.add-to-compare-model').each(function() {
+            var $this = $(this),
+                $trimKey = $this.data('trim-key'),
+                $transmissionKey = $this.data('transmission-key'),
+                $txtAddToCompare = $this.data('add-to-compare'),
+                $txtRemoveFromComparison = $this.data('remove-from-comparison'),
+                $span = $('<span/>');
+
+            if ($.inArray(self.formCookieValue($trimKey, $transmissionKey), $valueArr) > -1) {
+                $this.addClass('added-to-compare-model');
+                $span.addClass('icon icon-minus');
+                $this.html('').append($span).append($txtRemoveFromComparison);
+            } else {
+                $this.removeClass('added-to-compare-model');
+                $span.addClass('icon icon-plus');
+                $this.html('').append($span).append($txtAddToCompare);
+            }
+        });
+    };
+}
+
+$(document).ready(function () {
+    // initialize
+    addToCompare.init();
+});

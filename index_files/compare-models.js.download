@@ -1,0 +1,542 @@
+﻿// create the compare models js object (singleton)
+var compareModels = new function () {
+    var self = this,
+        manageCompare = addToCompare;
+
+    // cookie related
+    self.compareCookieName = $('.compare-models-cookie-name').val();
+    self.compareCookie = $.cookie(self.compareCookieName);
+    self.cookieValSeparator = ':';
+    self.cookieValueArray = [];
+    self.isTouch = false;
+    self.numberCompared = manageCompare.getCookieValueArray().length;
+
+    // find dealer object vars
+    self.language = $('.current-language').val();
+
+    // the collection of categories
+    self.categories = {};
+
+    // the error indicator
+    self.hasError = false;
+
+    // popup
+    self.overlayElementSelector = '.compare-models-overlay';
+    self.popupElementSelector = '.popup-compare';
+
+    // find dealer object functions
+    self.init = function () {
+        // the event to open the popup
+        $(".compare-bikes a.compare-models-user-link").on("click", function (evt) {
+            var $a = $(this),
+                compared = parseInt($("div.compare-models-compare-number").attr("data-compare-total"), 10);
+
+            // get the cookie val array
+            self.compareCookie = $.cookie(self.compareCookieName);
+            if (self.compareCookie !== null && typeof (self.compareCookie) !== 'undefined') {
+                self.cookieValueArray = self.compareCookie.split(self.cookieValSeparator);
+            }
+
+            // check if the cookie has less than 4 trims as well as the compared trim cart
+            if (self.cookieValueArray.length <= 4) {
+                if (typeof (compared) !== "undefined" && compared <= 4) {
+                    self.launchModal(false);
+                } else {
+                    self.launchModal(true);
+                }
+            } else {
+                self.launchModal(true);
+            }
+        });
+
+        // set the close modal events
+        $(".compare-models-close").on("click", function (evt) {
+            evt.preventDefault();
+            self.closeModal();
+            return false;
+        });
+        $(self.overlayElementSelector).on("click", function(evt) {
+            evt.preventDefault();
+            self.closeModal();
+            return false;
+        });
+
+        // get whether there was a touch event
+        self.isTouch = !!("ontouchstart" in window) || (navigator.msMaxTouchPoints > 0);
+    }
+
+    // function to load the modal content using ajax
+    self.loadModal = function () {
+        // show the loader initially
+        $(".compare-models-loader").show();
+        // hide error message initially
+        $(".compare-models-error-message").hide();
+
+        // use ajax to load the modal contents
+        var urlWithLang = '/getcomparemodels/' + self.language;
+        $.ajax({
+            url: urlWithLang,
+            contentType: 'application/html; charset=utf-8',
+            cache: false,
+            type: "GET",
+            datatype: "html"
+        }).success(function (result) {
+            $("div.compare-models-modal-dv").html(result);
+            // show the error message if necessary
+            if (self.hasError) $(".compare-models-error-message").show();
+            self.bindSelects();
+            $(self.popupElementSelector).css("top", $(window).scrollTop() + 70).fadeIn();
+            self.resetForm();
+            $(".compare-models-loader").hide();
+
+            if (typeof (Event) === 'function') {
+              var event = new Event('compare-tool-refreshed');
+              dispatchEvent(event);
+            } else {
+              var event = document.createEvent('Event');
+              event.initEvent('compare-tool-refreshed', true, true);
+              dispatchEvent(event);
+            }
+        }).error(function (xhr, status) {
+            $(".compare-models-error-text").html(status);
+            $(".compare-models-error-message").show();
+            $(".compare-models-loader").hide();
+        });
+    };
+
+    // update the cookie for the order of the compared trims
+    self.updateCookie = function () {
+        var addToCompareCookieName = $('.compare-models-cookie-name').val();
+
+        // remove the cookie and then recreate it from the keys in the columns
+        $.removeCookie(addToCompareCookieName);
+        $("div.populated").each(function(indx, div) {
+            var $div = $(div),
+                $trimKey = $div.data("trim-key"),
+                $transmissionKey = $div.data("transmission-key");
+
+            // use the compare manager to add values to the cookie
+            manageCompare.addToCookie($trimKey, $transmissionKey);
+        });
+    };
+
+    // rebind events and refresh the form
+    self.resetForm = function()
+    {
+        // set the close modal event
+        $(".compare-models-close").on("click", function (evt) {
+            evt.preventDefault();
+            self.closeModal();
+            return false;
+        });
+
+        // set the remove column event
+        $(".compare-close").on("click", function (evt) {
+            var $button = $(this),
+                $trimKey = $button.data("trim-key"),
+                $transmissionKey = $button.data("transmission-key"),
+                $selectDiv = $(".compare-select");
+
+            // remove the trim and transmission from the cookie
+            manageCompare.removeFromCookie($trimKey, $transmissionKey);
+            manageCompare.updateCompareCart();
+            manageCompare.updateButtons();
+            self.numberCompared = manageCompare.getCookieValueArray().length;
+
+            // replace the column with the selects and add an empty column to populate
+            $button.closest("div.column").remove();
+            // add an empty column for populating to the end of the columns
+            $selectDiv.before($("<div/>", { "class": "column is-empty" }));
+            $selectDiv.removeClass("is-hidden");
+
+            // if there are no more columns populated then remove the row headings column
+            if (self.numberCompared === 0) {
+                $("div.row-headings .table-container").empty();
+            } else {
+                // finally reload the modal with remianing trims and data
+                self.loadModal();
+            }
+
+            // if there is an error then remove it
+            if (self.hasError === true) {
+                self.hasError = false;
+                // hide error message
+                $(".compare-models-error-message").hide();
+            }
+        });
+
+        // get whether there was a touch event
+        self.isTouch = !!("ontouchstart" in window) || (navigator.msMaxTouchPoints > 0);
+
+        // move any empty columns to the front of the list in order to keep the scrollbar on a populated column
+        self.columnCheck();
+
+        // align the cells
+        self.alignCells();
+
+        // add the scrollbar to the last column
+        self.setUniversalScroll();
+
+        // highlight the rows with differences
+        self.findDifferent();
+
+        // make the columns sortable
+        self.makeSortable();
+    }
+
+    // function to close the find a dealer modal
+    self.launchModal = function (errorState) {
+        // set the error state
+        self.hasError = errorState;
+
+        // show both the overlay and the modal popup
+        $(self.overlayElementSelector).css("background", "rgba(0, 0, 0, 0.5)").fadeIn();
+        $(self.popupElementSelector).css("top", $(window).scrollTop() + 70).fadeIn();
+
+        // load modal content
+        self.loadModal();
+    };
+
+    // function to close the find a dealer modal
+    self.closeModal = function () {
+        // hide both the overlay and the modal popup
+        $(self.overlayElementSelector + ', ' + self.popupElementSelector).fadeOut();
+    };
+
+    // bind the category select data
+    self.bindSelects = function () {
+        // read the json from the hidden input
+        var trimCategories = JSON.parse($("#model-compare-trim-categories").val());
+
+        // create the category collection
+        self.categories = null;
+        self.categories = _.map(trimCategories, function (cat) {
+          return { "category": cat.Key,
+            "trackingName": cat.TrackingName,
+                     "trims": _.flatten(_.map(cat.Trims, function (item) {
+                         return _.map(item.Transmissions, function (trans) {
+                             return { "Key": item.Key, "Name": item.Name, "Year": item.ModelYear, "Transmission": trans.Name, "TransmissionKey": trans.Key };
+                         });
+                     }))
+                   }
+        });
+
+        // disable the dependent model selects
+        $(".model-compare-trim-select").attr("disabled", true).css("background-color", "#f6f6f6");
+
+        // populate the model select(s) and change event
+        $(".model-compare-category-select").each(function (indx, select) {
+            var $select = $(select);
+            $.each(self.categories, function (index, item) {
+                $select.append($("<option/>", {
+                    value: item.category,
+                    text: item.category,
+                    'data-tag': item.trackingName
+                }));
+            });
+        }).change(function (evt) {
+            var $this = $(this),
+                $selected = $this.find("option:selected"),
+                $dependent = $this.parent($(".compare-select")).find($(".model-compare-trim-select"));
+
+            var selectedCat = _.find(self.categories, function(cat) {
+                return cat.category === $selected.val();
+            });
+
+            // first clear the dependent select's options
+            $dependent.attr("disabled", false).removeAttr("style").find('option:gt(0)').remove();
+
+            // get the list of existing transmissions currently in the cookie
+            var currentTrans = self.getCookieTransmissions();
+
+            // then populate with new list of trims
+            $.each(selectedCat.trims, function (indx, item) {
+                if ($.inArray(item.TransmissionKey, currentTrans) === -1) {
+                    $dependent.append('<option data-trim-key="' + item.Key + '" data-transmission-key="' + item.TransmissionKey +
+                                       '" value="' + item.Key + '">' + item.Name + ' ' + item.Transmission + ' ' + item.Year + '</option>');
+                }
+            });
+        });
+
+        // the trim select change event
+        $(".model-compare-trim-select").change(function(evt) {
+          var $select = $(this),
+            $selected = $select.find("option:selected"),
+            $trimKey = $selected.data("trim-key"),
+            $transmissionKey = $selected.data("transmission-key"),
+            $comparePosition = $('.column.populated').toArray().length,
+            $categoryTrackingName = $('option:selected', $(".model-compare-category-select")).data('tag');
+            window.dataLayer.push({
+                'event': 'compare_bikes_model_selected',
+                'category': $categoryTrackingName,
+                'model': $trimKey,
+                'compare-position': $comparePosition + 1 || 1
+            });
+
+
+            // update the cookie and page elements
+            manageCompare.addToCookie($trimKey, $transmissionKey);
+            manageCompare.updateCompareCart();
+            manageCompare.updateButtons();
+
+            // finally load the new modal content with chosen trim
+            self.loadModal();
+        });
+    };
+
+    // rebind the select events after client activity
+    self.rebindSelects = function () {
+        // disable the dependent model selects
+        $(".model-compare-category-select").val("selecter").find(".model-compare-trim-select").attr("disabled", true).css("background-color", "#f6f6f6");
+
+        // bind the change event to all category selects
+        $(".model-compare-category-select").change(function (evt) {
+            var $this = $(this),
+                $selected = $this.find("option:selected"),
+                $dependent = $this.parent($(".compare-select")).find($(".model-compare-trim-select"));
+
+            var selectedCat = _.find(self.categories, function (cat) {
+                return cat.category === $selected.val();
+            });
+
+            // first clear the dependent select's options
+            $dependent.attr("disabled", false).removeAttr("style").find('option:gt(0)').remove();
+
+            // get the list of existing transmissions currently in the cookie
+            var currentTrans = self.getCookieTransmissions();
+
+            // then populate with new list of trims
+            $.each(selectedCat.trims, function (indx, item) {
+                if ($.inArray(item.TransmissionKey, currentTrans) === -1) {
+                    $dependent.append('<option data-trim-key="' + item.Key + '" data-transmission-key="' + item.TransmissionKey +
+                                       '" value="' + item.Key + '">' + item.Name + ' ' + item.Transmission + ' ' + item.Year + '</option>');
+                }
+            });
+        });
+    };
+
+    // align the table cells
+    self.columnCheck = function () {
+        // get the list of populated columns
+        var $columns = $("div.column.populated");
+
+        $columns.each(function(indx, div) {
+            var $div = $(div);
+
+            if ($div.find(".table-container").html().indexOf("div") < 0) {
+                $columns.first().before($div);
+            }
+        });
+    };
+
+    // align the table cells
+    self.alignCells = function () {
+        // align the upper cells
+        var tallest = 0;
+        $(".top-row").each(function (indx, div) {
+            var $row = $(div);
+            if ($row.height() > tallest) {
+                tallest = $row.height();
+            }
+        }).height(tallest);
+
+        // align specification cells - first build height map
+        var catHeightMap = {};
+        var itemHeightMap = {};
+        $(".table-container").each(function(indx, div) {
+            var $table = $(div);
+
+            // first the categories
+            $table.find('span.cell').each(function (idx, cell) {
+                var $cell = $(cell);
+
+                if ($cell.data("spec-category") in catHeightMap) {
+                    var checkHeight = parseInt(catHeightMap[$cell.data("spec-category")], 10);
+                    if ($cell.height() < checkHeight) {
+                        $cell.height(checkHeight);
+                    } else {
+                        catHeightMap[$cell.data("spec-category")] = $cell.height();
+                    }
+                } else {
+                    catHeightMap[$cell.data("spec-category")] = $cell.height();
+                }
+            });
+
+            // second the items
+            $table.find('div.cell').each(function(idx, cell) {
+                var $cell = $(cell);
+
+                if ($cell.data("spec-item") in itemHeightMap) {
+                    var checkHeight = parseInt(itemHeightMap[$cell.data("spec-item")], 10);
+                    if ($cell.height() < checkHeight) {
+                        $cell.height(checkHeight);
+                    } else {
+                        itemHeightMap[$cell.data("spec-item")] = $cell.height();
+                    }
+                } else {
+                    itemHeightMap[$cell.data("spec-item")] = $cell.height();
+                }
+            });
+        });
+
+        // apply heightmap to the category cells
+        $('span.cell').each(function (idx, cell) {
+            var $cell = $(cell),
+                checkHeight = parseInt(catHeightMap[$cell.data("spec-category")], 10);
+
+            $cell.height(checkHeight);
+            if (checkHeight > 30) $cell.addClass("tall");
+        });
+
+        // apply heightmap to the item cells
+        $('div.cell').each(function (idx, cell) {
+            var $cell = $(cell),
+                checkHeight = parseInt(itemHeightMap[$cell.data("spec-item")], 10);
+
+            $cell.height(checkHeight);
+            if (checkHeight > 30) $cell.addClass("tall");
+        });
+
+        // resize the empty column
+        var $column = $("div.column").first();
+        var columnHeight = $column.find(".top-row").outerHeight() + $column.find(".table-container").outerHeight();
+        $(".compare-select").height(columnHeight).css({ "height": columnHeight + "px" });
+
+        // empty the objects
+        catHeightMap = {};
+        itemHeightMap = {};
+    };
+
+    // set the universal scrollbar
+    self.setUniversalScroll = function () {
+        // remove the scrollbar from any previous items
+        $(".table-container").css("overflow-y", "hidden").removeClass("scroller");
+
+        // add the scrollbar to the last column if it is not a touch device
+        if (self.isTouch === false) {
+            var $lastCol = $("div.column.populated").last();
+            $lastCol.width("220px")
+                .find(".table-container").css("overflow-y", "auto").addClass("scroller")
+                .scroll(function() {
+                    $(".table-container").not(".scroller").scrollTop($(this).scrollTop());
+                });
+            $lastCol.find(".top-row").css("width", "190px");
+        } else {
+            $(".table-container").scroll(function () {
+                $(".table-container").scrollTop($(this).scrollTop());
+            });
+        }
+    };
+
+    // find the difference rows
+    self.findDifferent = function () {
+        // first reset all of the cells so that they don't have the extra compare class
+        $("div.cell").removeClass("compare");
+
+        // first group the values by item
+        var groupedValues = _.groupBy($("div.compare-model-spec-value"), function(specValue) {
+            return $(specValue).data("spec-item");
+        });
+
+        $("div.row-headings").find("div.compare-model-spec-item").each(function(indx, div) {
+            var $div = $(div);
+
+            // filter by type of item
+            var filtered = _.filter(groupedValues, function(group, key) {
+                return key === $div.data("spec-item");
+            });
+
+            // check for differences
+            var test = $(filtered[0][0]).html();
+            var check = _.find(filtered[0], function(item) {
+                return $(item).html() !== test;
+            });
+
+            // set the difference class if there are different values
+            if (check) {
+                $div.addClass("compare");
+
+                $.each(filtered[0], function (indx, item) {
+                    $(item).addClass("compare");
+                });
+            }
+        });
+    };
+
+    // make the divs sortable
+    self.makeSortable = function() {
+        $(".compare-models-sortable").sortable({
+            containerSelector: 'div.compare-models-sortable',
+            itemSelector: 'div.column',
+            vertical: false,
+            delay: 500,
+            // check where the sortable starts - ignore scrollbars
+            onMousedown: function($item, _super, event) {
+                var $target = $(event.target);
+                if ($target.hasClass("scroller") === true || $target.hasClass("compare-model-link") ||
+                    $target.hasClass("compare-model-img") || $target.hasClass("compare-close")) {
+
+                    if (self.isTouch) {
+                        if (($target.hasClass("compare-model-link") || $target.hasClass("compare-model-img")) && $target[0].href) {
+                            location.href = $target[0].href;
+                        }
+                    }
+                    return false;
+                } else {
+                    return true;
+                }
+            },
+            // reset the universal scrollbar after dropping and update the cookie
+            onDrop: function (item, container, _super) {
+                _super(item);
+                self.columnCheck();
+                self.setUniversalScroll();
+                self.updateCookie();
+            },
+            // set item relative to cursor position
+            onDragStart: function ($item, container, _super) {
+                var offset = $item.offset(),
+                    pointer = container.rootGroup.pointer;
+
+                // don't let any empty spec item be sortable / draggable
+                if ($item.find(".table-container").html().indexOf("div") < 0) {
+                    return false;
+                }
+
+                // make all of the columns narrow during move
+                $(".populated").css("width", "191px");
+
+                adjustment = {
+                    left: pointer.left - offset.left,
+                    top: pointer.top - offset.top
+                };
+
+                _super($item, container);
+            },
+            onDrag: function ($item, position) {
+                $item.css({
+                    left: position.left - adjustment.left,
+                    top: position.top - adjustment.top
+                });
+            }
+        });
+    };
+
+    // get the array of transmission keys from the cookie
+    self.getCookieTransmissions = function () {
+        // get the cookie val array
+        self.compareCookie = $.cookie(self.compareCookieName);
+        if (self.compareCookie !== null && typeof (self.compareCookie) !== 'undefined') {
+            self.cookieValueArray = self.compareCookie.split(self.cookieValSeparator);
+        }
+
+        return _.map(self.cookieValueArray, function(cookieVal) {
+            return cookieVal.split('|')[1];
+        });
+    };
+}
+
+$(document).ready(function () {
+    // initialize the find dealer object
+    compareModels.init();
+});

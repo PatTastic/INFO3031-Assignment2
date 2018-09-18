@@ -1,0 +1,90 @@
+﻿//Facebook
+//Moved just after <body> on FB's recommendation
+//(function(d, s, id) {
+//    var js, fjs = d.getElementsByTagName(s)[0];
+//    if (d.getElementById(id)) return;
+//    js = d.createElement(s); js.id = id;
+//    js.src = "//connect.facebook.net/en_US/sdk.js#xfbml=1&appId=154970967867667&version=v2.0";
+//    fjs.parentNode.insertBefore(js, fjs);
+//}(document, 'script', 'facebook-jssdk'));
+
+//Twitter
+!function (d, s, id) { var js, fjs = d.getElementsByTagName(s)[0], p = /^http:/.test(d.location) ? 'http' : 'https'; if (!d.getElementById(id)) { js = d.createElement(s); js.id = id; js.src = p + '://platform.twitter.com/widgets.js'; fjs.parentNode.insertBefore(js, fjs); } }(document, 'script', 'twitter-wjs');
+
+//Pinterest
+(function (d) {
+    var f = d.getElementsByTagName('SCRIPT')[0], p = d.createElement('SCRIPT');
+    p.type = 'text/javascript';
+    p.async = true;
+    p.src = '//assets.pinterest.com/js/pinit.js';
+    f.parentNode.insertBefore(p, f);
+}(document));
+
+//Email-To-friend
+var targetWin = null;
+$(document).on('click', '#JSmailtofriend', function (evt) {
+    evt.preventDefault();
+    var w = 500;
+    var h = 650;
+    var left = (screen.width / 2) - (w / 2);
+    var top = (screen.height / 2) - (h / 2);
+
+    var currentLanguage = $('.current-language').val();
+    var emailurl = currentLanguage == 'fr' ? '/emailtofriend-fr' : '/emailtofriend';
+    emailurl = location.protocol + '//' + location.host + emailurl + '?refer=' + window.location.href;
+
+    if ((targetWin == null) || (targetWin.closed)) {
+        targetWin = window.open(emailurl, "_blank", 'toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=no,resizable=no,copyhistory=no,width=' + w + ',height=' + h + ',top=' + top + ',left=' + left);
+        targetWin.resizeTo(w, h);
+        targetWin.focus();
+    } else {
+        targetWin.focus();
+    }
+
+});
+
+//this is requiered due to FB does not render on hidden elements in FF and IE
+var userShare = document.getElementsByClassName("user-share-wrapper")[0];
+var rendered = false;
+
+// Wait that facebook script has been loaded
+window.fbAsyncInit = function () {
+    // FB variable is now accessible
+    userShare.onmouseover = function () {
+        if (!rendered) {
+            //Remove the styles added at runtime
+            $('#userShareDropDown').removeAttr('style').show();
+            //trigger the hover
+            //$('.user-share-wrapper').trigger('hover');
+            //Disable 
+            rendered = true;
+        }
+    };
+};
+
+$(document).ready(function () {
+    // Share dropdown functionality
+    $('.user-share-wrapper').hover(function () {
+        var fbItem = $("li.share-on-fb");
+
+        $(this).addClass('hover');
+
+        // make facebook adjustments
+        fbItem.find("span").css("vertical-align", "top").find("iframe").css({ "width": "60px", "height": "40px" });
+        $('.user-share-dropdown-wrapper').show();
+    }, function () {
+        $(this).removeClass('hover');
+        $('.user-share-dropdown-wrapper').hide();
+    });
+
+
+    //facebook likes
+    var SOCIAL_API_URL = '/api/socialmedia';
+    var FACEBOOK_ROUTE = '/facebooklikes';
+
+    // get the facebook likes and populate the span with them
+    $.get(SOCIAL_API_URL + FACEBOOK_ROUTE).then(function(data) {
+        var numberOfLikes = data;
+        $('.number-facebook-likes').html('<strong>' + numberOfLikes + '</strong>');
+    });
+})
