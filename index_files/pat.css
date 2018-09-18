@@ -5,8 +5,19 @@
     color: #aaaaaa;
 }
 
+html, head, meta, script, link, title{
+    background-color: black;
+}
+
 .a-hide-content{
     width: 0;
     overflow: hidden;
     padding: 0;
+}
+
+img.promo-img{
+    z-index: 1;
+}
+span.promo-tab-example{
+    z-index: 2;
 }
